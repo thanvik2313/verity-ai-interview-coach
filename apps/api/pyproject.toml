@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "verity-api"
+version = "0.1.0"
+description = "Verity FastAPI backend — modular monolith API/worker/realtime application."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Verity" }]
+
+dependencies = [
+  "fastapi>=0.115,<0.116",
+  "uvicorn[standard]>=0.32,<0.33",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.6,<3",
+  "sqlalchemy[asyncio]>=2.0.36,<3",
+  "asyncpg>=0.30,<0.31",
+  "pyjwt>=2.9,<3",
+  "cryptography>=43.0,<44",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.7,<0.8",
+  "mypy>=1.13,<2",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<0.25",
+  "httpx>=0.27,<0.28",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/verity"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# ---------------------------------------------------------------------------
+# Ruff — lint + format
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "S",   # flake8-bandit (security)
+  "N",   # pep8-naming
+  "ASYNC", # flake8-async
+]
+ignore = [
+  "S101", # allow assert in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["verity"]
+
+# ---------------------------------------------------------------------------
+# mypy — static typing
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["verity"]
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
