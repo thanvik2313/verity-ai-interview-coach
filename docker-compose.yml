@@ -1,0 +1,68 @@
+name: verity
+
+# Milestone 1A: infrastructure services only.
+# The api, worker, scheduler, and web application services are added in
+# later milestones once their respective Dockerfiles exist (see
+# infra/docker/). Adding an application service here before its Dockerfile
+# exists would produce a compose file that cannot build.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: verity-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: verity
+      POSTGRES_PASSWORD: verity_local_dev
+      POSTGRES_DB: verity
+    ports:
+      - "5432:5432"
+    volumes:
+      - verity-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verity -d verity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: verity-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - verity-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: verity-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: verity
+      MINIO_ROOT_PASSWORD: verity_local_dev
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console
+    volumes:
+      - verity-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  verity-postgres-data:
+  verity-redis-data:
+  verity-minio-data:
+
+networks:
+  default:
+    name: verity-local
