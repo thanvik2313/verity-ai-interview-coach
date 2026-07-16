@@ -23,6 +23,7 @@ from verity.db.base import Base
 # so `alembic revision --autogenerate` (for future migrations; this
 # revision itself is hand-written) can see it.
 from verity.modules.identity.domain.models import User  # noqa: F401
+from verity.modules.identity.domain.session_models import AuthSession  # noqa: F401
 
 config = context.config
 
