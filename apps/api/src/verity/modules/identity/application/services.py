@@ -15,6 +15,7 @@ from uuid import UUID
 
 from verity.core.config import Settings
 from verity.core.crypto import hash_email
+from verity.core.errors import InvalidRefreshTokenError
 from verity.core.security import (
     create_access_token,
     decode_access_token,
@@ -24,6 +25,7 @@ from verity.core.security import (
 from verity.modules.identity.application.exceptions import (
     AccountNotActiveError,
     InvalidSessionError,
+    RefreshTokenReuseDetectedError,
     UserNotFoundError,
 )
 from verity.modules.identity.application.interfaces import (
@@ -85,12 +87,15 @@ class IdentitySessionService:
         Raises:
             InvalidSessionError: The session does not exist, was already
                 revoked, or has expired.
-            core.errors.InvalidRefreshTokenError: The presented token does
-                not match the session's stored hash (propagated as-is —
-                it is already a typed `AuthenticationError`, and the app's
-                exception handlers map it to 401 the same as any other
-                authentication failure; wrapping it here would add no
-                information a caller is allowed to see).
+            RefreshTokenReuseDetectedError (an `InvalidSessionError`
+                subclass): The presented refresh token did not match the
+                session's stored hash while the session was otherwise
+                still active — treated as a possible stolen/replayed
+                token (Database.md §4.1: "Refresh-token reuse revokes the
+                token family"), so the entire family is revoked via the
+                existing `RefreshSessionRepository.revoke` port before
+                this raises; no interface or adapter change was needed
+                for that.
             UserNotFoundError: The session references a user that no
                 longer exists.
             AccountNotActiveError: The user exists but is not active.
@@ -101,7 +106,18 @@ class IdentitySessionService:
         if stored.expires_at <= datetime.now(UTC):
             raise InvalidSessionError("Refresh session has expired.")
 
-        verify_refresh_token(raw_value=raw_refresh_token, expected_hash=stored.token_hash)
+        try:
+            verify_refresh_token(raw_value=raw_refresh_token, expected_hash=stored.token_hash)
+        except InvalidRefreshTokenError as exc:
+            # A mismatched refresh token against an otherwise-active,
+            # unexpired session most plausibly means this token was
+            # already rotated away and is now being replayed — treat the
+            # whole family as compromised rather than only failing this
+            # one request.
+            await self._sessions.revoke(session_id)
+            raise RefreshTokenReuseDetectedError(
+                "Refresh token did not match; session family revoked."
+            ) from exc
 
         user = await self._users.get_by_id(stored.user_id)
         if user is None:

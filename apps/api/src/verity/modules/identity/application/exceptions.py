@@ -47,8 +47,24 @@ class InvalidSessionError(IdentityApplicationError):
     """A refresh session is missing, expired, revoked, or reused.
 
     Deliberately generic for the same reason as `AccountNotActiveError` —
-    the specific cause (revoked vs expired vs reuse-detected) is a detail
-    for server-side audit logging, not for a caller-visible exception type.
+    the specific cause (revoked vs expired) is a detail for server-side
+    audit logging, not for a caller-visible exception type.
+    """
+
+
+class RefreshTokenReuseDetectedError(InvalidSessionError):
+    """A presented refresh token did not match its session's stored hash,
+    while that session was otherwise still active and unexpired.
+
+    Distinct from the base `InvalidSessionError` (rather than raising that
+    directly) because this specific case most plausibly means a refresh
+    token was captured and replayed after already being rotated away —
+    `IdentitySessionService.refresh_session` responds by revoking the
+    entire session family (Database.md §4.1: "Refresh-token reuse revokes
+    the token family"), not just failing this one request. Kept as an
+    `InvalidSessionError` subclass so existing callers that only catch the
+    base type still handle it correctly; a caller that wants to log this
+    case distinctly for security monitoring can catch the subclass.
     """
 
 

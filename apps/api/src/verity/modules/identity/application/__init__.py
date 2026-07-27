@@ -10,12 +10,14 @@ is the only place these services get wired to a real database or HTTP
 framework.
 """
 
+from verity.modules.identity.application.authentication_service import AuthenticationService
 from verity.modules.identity.application.exceptions import (
     AccountNotActiveError,
     DuplicateIdentityError,
     IdentityApplicationError,
     InvalidIdentityError,
     InvalidSessionError,
+    RefreshTokenReuseDetectedError,
     RoleAssignmentError,
     UserNotFoundError,
 )
@@ -38,6 +40,7 @@ from verity.modules.identity.application.types import (
 __all__ = [
     "AccountNotActiveError",
     "AuthenticatedUser",
+    "AuthenticationService",
     "DuplicateIdentityError",
     "ExternalIdentity",
     "IdentityApplicationError",
@@ -48,6 +51,7 @@ __all__ = [
     "IssuedTokenPair",
     "NewUserProfile",
     "RefreshSessionRepository",
+    "RefreshTokenReuseDetectedError",
     "RoleAssignmentError",
     "StoredRefreshSession",
     "UserNotFoundError",
